@@ -1,0 +1,77 @@
+ SqlConnection Con = new SqlConnection(@"Data Source=.\SQLEXPRESS;Initial Catalog=The_Cake_House_App_DB;Integrated Security=True");
+ 
+    void Con_Open()
+        {
+            if (Con.State != ConnectionState.Open)
+            {
+                Con.Open();
+            }
+        }
+
+    void Con_Close()
+        {
+            if (Con.State != ConnectionState.Closed)
+            {
+                Con.Close();
+            }
+        }
+
+		
+	int Auto_Incr()
+        {
+            int Cnt = 0;
+            SqlCommand Cmd = new SqlCommand();
+
+            Con_Open();
+            Cmd.CommandText = "Select Count(Flavour_ID) From Flavour_Type";
+            Cmd.Connection = Con;
+
+            Cnt = Convert.ToInt32(Cmd.ExecuteScalar());
+
+            Cmd.Dispose();
+
+            if (Cnt > 0)
+            {
+                Cnt = Cnt + 101;
+            }
+            else
+            {
+                Cnt = 101;
+            }
+
+            Con_Close();
+            return Cnt;
+        }
+    void Clear_Controls()
+        {
+            tb_Flavour_ID.Text = Convert.ToString(Auto_Incr());
+            tb_Flavour_Name.Text = "";
+        }
+	
+    private void frm_Add_Flavours_Type_Load(object sender, EventArgs e)
+        {
+            tb_Flavour_Name.Focus();
+            tb_Flavour_ID.Text = Convert.ToString(Auto_Incr());
+        }
+		
+	private void btn_Save_Click(object sender, EventArgs e)
+        {
+            Con_Open();
+
+            if (tb_Flavour_ID.Text != "" && tb_Flavour_Name.Text != "")
+            {
+                SqlDataAdapter sda = new SqlDataAdapter("Insert Into Flavour_Type Values(" + tb_Flavour_ID.Text + ",'" + tb_Flavour_Name.Text + "')", Con);
+
+                DataTable dt = new DataTable();
+                sda.Fill(dt);
+
+                MessageBox.Show("New Flavour Saved Successfully");
+                Clear_Controls();
+            }
+            else
+            {
+                MessageBox.Show("First Fill Flavour Name!!!");
+            }
+
+            Con_Close();
+        }
