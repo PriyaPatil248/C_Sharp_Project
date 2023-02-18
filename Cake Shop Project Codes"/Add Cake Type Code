@@ -1,0 +1,105 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+using System.Data.SqlClient;
+
+namespace The_Cake_House_App
+{
+    public partial class frm_Add_Cake_Type : Form
+    {
+        public frm_Add_Cake_Type()
+        {
+            InitializeComponent();
+        }
+
+        SqlConnection Con = new SqlConnection(@"Data Source=.\SQLEXPRESS;Initial Catalog=The_Cake_House_App_DB;Integrated Security=True");
+
+        void Con_Open()
+        {
+            if (Con.State != ConnectionState.Open)
+            {
+                Con.Open();
+            }
+        }
+
+        void Con_Close()
+        {
+            if (Con.State != ConnectionState.Closed)
+            {
+                Con.Close();
+            }
+        }
+
+
+        int Auto_Incr()
+        {
+            int Cnt = 0;
+            SqlCommand Cmd = new SqlCommand();
+
+            Con_Open();
+            Cmd.CommandText = "Select Count(Cake_Type_ID) From Cake_Type_Details";
+            Cmd.Connection = Con;
+
+            Cnt = Convert.ToInt32(Cmd.ExecuteScalar());
+
+            Cmd.Dispose();
+
+            if (Cnt > 0)
+            {
+                Cnt = Cnt + 201;
+            }
+            else
+            {
+                Cnt = 201;
+            }
+
+            Con_Close();
+            return Cnt;
+        }
+        void Clear_Controls()
+        {
+            tb_Cake_Type_ID.Text = Convert.ToString(Auto_Incr());
+            tb_Cake_Type.Text = "";
+        }
+
+        private void frm_Add_Cake_Type_Load(object sender, EventArgs e)
+        {
+            tb_Cake_Type.Focus();
+            tb_Cake_Type_ID.Text = Convert.ToString(Auto_Incr());
+        }
+
+        private void btn_Save_Click(object sender, EventArgs e)
+        {
+            Con_Open();
+
+            if (tb_Cake_Type_ID.Text != "" && tb_Cake_Type.Text != "")
+            {
+                SqlDataAdapter sda = new SqlDataAdapter("Insert Into Cake_Type_Details Values(" + tb_Cake_Type_ID.Text + ",'" + tb_Cake_Type.Text + "')", Con);
+
+                DataTable dt = new DataTable();
+                sda.Fill(dt);
+
+                MessageBox.Show("New Cake Type Saved Successfully");
+                Clear_Controls();
+            }
+            else
+            {
+                MessageBox.Show("First Fill Cake Type!!!");
+            }
+
+            Con_Close();
+        }
+
+        private void btn_Back_Click(object sender, EventArgs e)
+        {
+            frm_CakeDetails_MainForm obj = new frm_CakeDetails_MainForm();
+            obj.Show();
+            this.Hide();
+        }
+    }
+}
