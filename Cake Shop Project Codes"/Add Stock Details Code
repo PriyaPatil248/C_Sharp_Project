@@ -1,0 +1,145 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+using System.Data.SqlClient;
+
+namespace The_Cake_House_App
+{
+    public partial class frm_Add_Stock_Details : Form
+    {
+        public frm_Add_Stock_Details()
+        {
+            InitializeComponent();
+        }
+
+        SqlConnection Con = new SqlConnection(@"Data Source=.\SQLEXPRESS;Initial Catalog=The_Cake_House_App_DB;Integrated Security=True");
+
+        void Con_Open()
+        {
+            if (Con.State != ConnectionState.Open)
+            {
+                Con.Open();
+            }
+        }
+        void Con_Close()
+        {
+            if (Con.State != ConnectionState.Closed)
+            {
+                Con.Close();
+            }
+        }
+
+        private void btn_Back_Click(object sender, EventArgs e)
+        {
+            frm_Cake_Stock_MainForm obj = new frm_Cake_Stock_MainForm();
+            obj.Show();
+            this.Hide();
+        }
+
+        private void Only_Numric(object sender, KeyPressEventArgs e)
+        {
+            if (!(Char.IsDigit(e.KeyChar) || (e.KeyChar == (char)Keys.Back)))
+            {
+                e.Handled = true;
+            }
+        }
+
+        void Clear_Controls()
+        {
+            tb_Cake_ID.Clear();
+            cmb_Flavour.ResetText();
+            cmb_Cake_Type.ResetText();
+            cmb_Shape.ResetText();
+            cmb_Weight.ResetText();
+            tb_Current_Stock.Clear();
+            tb_Stock_Added.Clear();
+        }
+
+        private void btn_Search_Click(object sender, EventArgs e)
+        {
+            Con_Open();
+
+            SqlCommand Cmd = new SqlCommand("Select * From Cake_Details Where Cake_ID = @CkID", Con);
+
+            Cmd.Parameters.Add("CkID", SqlDbType.Int).Value = tb_Cake_ID.Text;
+            SqlDataReader Dr = Cmd.ExecuteReader();
+
+            if (Dr.Read())
+            {
+                cmb_Flavour.Text = (Dr["Flavour_Name"].ToString());
+                cmb_Cake_Type.Text = (Dr["Cake_Type"].ToString());
+                cmb_Shape.Text = (Dr["Shape"].ToString());
+                cmb_Weight.Text = (Dr["Weight"].ToString());
+                tb_Current_Stock.Text = (Dr["Current_Stock"].ToString());
+            }
+            else
+            {
+                MessageBox.Show("Cake Details Not Found", "Invalid Cake ID");
+                tb_Cake_ID.Clear();
+            }
+
+            Con_Close();
+        }
+
+
+        private void btn_Save_Stock_Click(object sender, EventArgs e)
+        {
+            Con_Open();
+
+            if (tb_Cake_ID.Text != "" && cmb_Flavour.Text != "" && cmb_Cake_Type.Text != "" && cmb_Shape.Text !="" && cmb_Weight.Text != "" && tb_Current_Stock.Text !="" && tb_Stock_Added.Text !="")
+            {
+                SqlCommand Cmd = new SqlCommand();
+
+                int NewStock = 0;
+
+                Cmd.Connection = Con;
+                Cmd.CommandText = "Insert Into Stock_Details(Cake_ID,Date,Stock_Added,Username)values(@CkID,@Dt,@StAdd,@Unm)";
+
+                Cmd.Parameters.Add("CkID", SqlDbType.Int).Value = tb_Cake_ID.Text;
+                Cmd.Parameters.Add("Dt", SqlDbType.Date).Value = dtp_Date.Value.Date;
+                Cmd.Parameters.Add("StAdd", SqlDbType.Int).Value = tb_Stock_Added.Text;
+                Cmd.Parameters.Add("Unm", SqlDbType.NChar).Value = Shared_Class.Username;
+
+                Cmd.ExecuteNonQuery();
+                Cmd.Dispose();
+
+                NewStock = Convert.ToInt32(tb_Current_Stock.Text) + Convert.ToInt32(tb_Stock_Added.Text);
+
+                Cmd.Connection = Con;
+                Cmd.CommandText = "Update Cake_Details Set Current_Stock = @CStk where Cake_ID = @CID";
+
+                Cmd.Parameters.Add("CStk", SqlDbType.Int).Value = NewStock;
+                Cmd.Parameters.Add("CID", SqlDbType.Int).Value = tb_Cake_ID.Text;
+                
+                Cmd.ExecuteNonQuery();
+                Cmd.Dispose();
+
+                MessageBox.Show("Stock Added Successfully....");
+
+                Clear_Controls();
+            }
+            else
+            {
+                MessageBox.Show("First Fill All Cumpulsary Fields");
+            }
+
+            Con_Close();
+        }
+
+
+        private void btn_Refresh_Click(object sender, EventArgs e)
+        {
+            Clear_Controls();
+        }
+
+        private void frm_Add_Stock_Details_Load(object sender, EventArgs e)
+        {
+            tb_Cake_ID.Focus();
+        }
+    }
+}
