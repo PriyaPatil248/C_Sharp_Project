@@ -1,0 +1,274 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+using System.Data.SqlClient;
+
+namespace The_Cake_House_App
+{
+    public partial class frm_Add_Customer_Details : Form
+    {
+        public frm_Add_Customer_Details()
+        {
+            InitializeComponent();
+        }
+
+        SqlConnection Con = new SqlConnection(@"Data Source=.\SQLEXPRESS;Initial Catalog=The_Cake_House_App_DB;Integrated Security=True");
+        int SStock = 0;
+
+        void Con_Open()
+        {
+            if (Con.State != ConnectionState.Open)
+            {
+                Con.Open();
+            }
+        }
+
+        void Con_Close()
+        {
+            if (Con.State != ConnectionState.Closed)
+            {
+                Con.Close();
+            }
+        }
+       
+        private void Only_Numric(object sender, KeyPressEventArgs e)
+        {
+            if (!(Char.IsDigit(e.KeyChar) || (e.KeyChar == (char)Keys.Back)))
+            {
+                e.Handled = true;
+            }
+        }
+
+        private void Only_Text(object sender, KeyPressEventArgs e)
+        {
+            if (!(char.IsLetter(e.KeyChar) || (e.KeyChar == (char)Keys.Back) || (e.KeyChar == (char)Keys.Space)))
+            {
+                e.Handled = true;
+            }
+        }
+
+        private void btn_Back_Click(object sender, EventArgs e)
+        {
+            frm_Customer_MainForm obj = new frm_Customer_MainForm();
+            obj.Show();
+            this.Hide();
+        }
+
+        void Clear_Controls()
+        {
+            tb_Customer_ID.Clear();
+            tb_Customer_Name.Clear();
+            tb_Mobile_No.Clear();
+            dtp_Order_Date.Text = "";
+            dtp_Delivery_Date.Text = "";
+            cmb_Select_Flavour.SelectedIndex = -1;
+            cmb_Select_Shape.SelectedIndex = -1;
+            cmb_Select_Type.SelectedIndex = -1;
+            cmb_Weight.SelectedIndex = -1;
+            tb_Total_Amount.Clear();
+            cmb_Payment_Type.SelectedIndex = -1;
+            tb_Paid_Amount.Clear();
+            tb_Remaining_Amount.Clear();
+        }
+
+        int Auto_Incr()
+        {
+            int Cnt = 0;
+            Con_Open();
+
+            SqlCommand Cmd = new SqlCommand();
+            Cmd.Connection = Con;
+            Cmd.CommandText = "Select Count(*)From Customer_Details";
+
+            Cnt = Convert.ToInt32(Cmd.ExecuteScalar());
+
+            if (Cnt > 0)
+            {
+                Cmd.CommandText = "Select Max(Cust_ID)From Customer_Details";
+                Cnt = Convert.ToInt32(Cmd.ExecuteScalar()) + 1;
+            }
+            else
+            {
+                Cnt = 1001;
+            }
+
+            Con_Close();
+            return Cnt;
+        }
+
+        void Bind_ComboBox()
+        {
+            Con_Open();
+
+            SqlCommand Cmd = new SqlCommand();
+            SqlDataReader Dr;
+
+            Cmd.Connection = Con;
+            Cmd.CommandText = "Select Distinct(Flavour_Name)From Cake_Details";
+
+            Dr = Cmd.ExecuteReader();
+
+            while (Dr.Read())
+            {
+                cmb_Select_Flavour.Items.Add(Dr.GetString(Dr.GetOrdinal("Flavour_Name")));
+            }
+
+            Cmd.Dispose();
+            Dr.Close();
+
+            Cmd.Connection = Con;
+            Cmd.CommandText = "Select Distinct(Cake_Type)From Cake_Details";
+
+            Dr = Cmd.ExecuteReader();
+
+            while (Dr.Read())
+            {
+                cmb_Select_Type.Items.Add(Dr.GetString(Dr.GetOrdinal("Cake_Type")));
+            }
+
+            Cmd.Dispose();
+            Dr.Close();
+
+            Cmd.Connection = Con;
+            Cmd.CommandText = "Select Distinct(Shape)From Cake_Details";
+
+            Dr = Cmd.ExecuteReader();
+
+            while (Dr.Read())
+            {
+                cmb_Select_Shape.Items.Add(Dr.GetString(Dr.GetOrdinal("Shape")));
+            }
+
+            Cmd.Dispose();
+            Dr.Close();
+
+            Cmd.Connection = Con;
+            Cmd.CommandText = "Select Distinct(Weight)From Cake_Details";
+
+            Dr = Cmd.ExecuteReader();
+
+            while (Dr.Read())
+            {
+                cmb_Weight.Items.Add(Dr.GetString(Dr.GetOrdinal("Weight")));
+            }
+
+            Con_Close();
+        }
+
+        private void frm_Add_Customer_Details_Load(object sender, EventArgs e)
+        {
+            tb_Customer_ID.Focus();
+            tb_Customer_ID.Text = Convert.ToString(Auto_Incr());
+            Bind_ComboBox();
+        }
+
+        private void cmb_Weight_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            Con_Open();
+
+            SqlCommand cmd = new SqlCommand("Select Rate, Current_Stock From Cake_Details Where Flavour_Name=@Fn And Cake_Type=@Ct And Shape = @Sp And Weight = @Wt ", Con);
+            
+            cmd.Parameters.Add("Fn", SqlDbType.NVarChar).Value = cmb_Select_Flavour.Text;
+            cmd.Parameters.Add("Ct", SqlDbType.NVarChar).Value = cmb_Select_Type.Text;
+            cmd.Parameters.Add("Sp", SqlDbType.NVarChar).Value = cmb_Select_Shape.Text;
+            cmd.Parameters.Add("Wt", SqlDbType.NVarChar).Value = cmb_Weight.Text;
+
+            SqlDataReader Dr = cmd.ExecuteReader();
+
+            if (Dr.Read())
+            {
+                tb_Total_Amount.Text = (Dr["Rate"].ToString());
+                SStock = Convert.ToInt32(Dr["Current_Stock"]);
+            }
+
+            if (SStock <= 0 && dtp_Delivery_Date.Value.Date == dtp_Order_Date.Value.Date)
+            {
+                MessageBox.Show("Cake Not Available Currently","Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+
+            Con_Close();
+        }
+
+        private void cmb_Payment_Type_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (dtp_Delivery_Date.Value.Date == dtp_Order_Date.Value.Date)
+            {
+                tb_Remaining_Amount.Text = "0";
+                tb_Paid_Amount.Text = tb_Total_Amount.Text;
+
+                tb_Paid_Amount.Enabled = false;
+            }
+            else
+            {
+                tb_Paid_Amount.Enabled = true;
+            }
+        }
+
+        private void tb_Paid_Amount_Leave(object sender, EventArgs e)
+        {
+            if (tb_Paid_Amount.Text != "" && tb_Total_Amount.Text != "")
+            {
+                tb_Remaining_Amount.Text = Convert.ToString( Convert.ToDouble(tb_Total_Amount.Text) - Convert.ToDouble(tb_Paid_Amount.Text));
+            }
+        }
+
+        private void btn_Save_Order_Click(object sender, EventArgs e)
+        {
+            Con_Open();
+
+            if (tb_Customer_ID.Text != "" && tb_Customer_Name.Text != "" && tb_Mobile_No.Text != "" && tb_Paid_Amount.Text != "" && tb_Remaining_Amount.Text != "" && tb_Total_Amount.Text != "" && cmb_Select_Type.Text  != "" && cmb_Select_Flavour.Text != "" && cmb_Select_Shape.Text != "" && cmb_Weight.Text != "" && cmb_Payment_Type.Text != "")
+            {
+                SqlCommand Cmd = new SqlCommand();
+
+                Cmd.Connection = Con;
+                Cmd.CommandText = "Insert Into Customer_Details(Cust_ID,Cust_Name,Cust_MobNo,Order_Date,Dilivary_Date,Tot_Amount,Paid_Amount,Payment_Type,Rem_Amount)values(@CsID,@CNm,@CMno,@Odt,@Ddt,@Tamt,@Pamt,@Ptyp,@Ramt)";
+
+                Cmd.Parameters.Add("CsID", SqlDbType.Int).Value = tb_Customer_ID.Text;
+                Cmd.Parameters.Add("CNm", SqlDbType.NVarChar).Value = tb_Customer_Name.Text;
+                Cmd.Parameters.Add("CMno", SqlDbType.Decimal).Value = tb_Mobile_No.Text;
+                Cmd.Parameters.Add("Odt", SqlDbType.Date).Value = dtp_Order_Date.Value.Date;
+                Cmd.Parameters.Add("Ddt", SqlDbType.Date).Value = dtp_Delivery_Date.Value.Date;
+                Cmd.Parameters.Add("Tamt",SqlDbType.Money).Value = tb_Total_Amount.Text;
+                Cmd.Parameters.Add("Pamt", SqlDbType.Money).Value = tb_Paid_Amount.Text;
+                Cmd.Parameters.Add("Ptyp",SqlDbType.NVarChar).Value = cmb_Payment_Type.Text;
+                Cmd.Parameters.Add("Ramt", SqlDbType.Money).Value = tb_Remaining_Amount.Text;
+                
+                Cmd.ExecuteNonQuery();
+
+                SStock--;
+
+                Cmd.Dispose();
+
+                Cmd.Connection = Con;
+                Cmd.CommandText = "Update Cake_Details Set Current_Stock = " + SStock + "  Where Flavour_Name=@Fn And Cake_Type=@Ct And Shape = @Sp And Weight = @Wt";
+
+                Cmd.Parameters.Add("Fn", SqlDbType.NVarChar).Value = cmb_Select_Flavour.Text;
+                Cmd.Parameters.Add("Ct", SqlDbType.NVarChar).Value = cmb_Select_Type.Text;
+                Cmd.Parameters.Add("Sp", SqlDbType.NVarChar).Value = cmb_Select_Shape.Text;
+                Cmd.Parameters.Add("Wt", SqlDbType.NVarChar).Value = cmb_Weight.Text;
+
+                Cmd.ExecuteNonQuery();
+
+                MessageBox.Show("Record Saved", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                Clear_Controls();
+            }
+            else
+            {
+                MessageBox.Show("First Fill All Cumpulsary Fields");
+            }
+
+            Con_Close();
+        }
+
+        private void btn_Refresh_Click(object sender, EventArgs e)
+        {
+            Clear_Controls();
+        }
+    }
+}
